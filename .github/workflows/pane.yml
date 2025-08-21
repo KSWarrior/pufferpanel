@@ -8,7 +8,7 @@ permissions:
   contents: write   # required for pushing changes back
 
 concurrency:
-  group: pufferpanel
+  group: mc-server
   cancel-in-progress: true
   
 jobs:
@@ -116,15 +116,21 @@ jobs:
         if: ${{ always() }}
         run: |
           cd $GITHUB_WORKSPACE
-          
-          # Copy container volumes into repo
+    
+          # Ensure folders
           mkdir -p pufferpanel/config pufferpanel/data
-          cp -r ~/pufferpanel/pufferpanel/config/* pufferpanel/config/ || true
-          cp -r ~/pufferpanel/pufferpanel/data/* pufferpanel/data/ || true
+    
+          # Copy from container instead of host folder
+          docker cp pufferpanel:/etc/pufferpanel/. pufferpanel/config/ || true
+          docker cp pufferpanel:/var/lib/pufferpanel/. pufferpanel/data/ || true
 
-          # Git commit & push
+          # Git setup
           git config --global user.name "github-actions[bot]"
           git config --global user.email "github-actions[bot]@users.noreply.github.com"
+    
+          # Handle upstream commits first
+          git pull --rebase origin main || true
+
           git add pufferpanel || true
           git commit -m "Update pufferpanel data" || echo "Nothing to commit"
           git push origin HEAD:main || echo "Nothing to push"
