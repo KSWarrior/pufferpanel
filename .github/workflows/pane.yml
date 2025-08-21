@@ -8,7 +8,7 @@ permissions:
   contents: write   # required for pushing changes back
 
 concurrency:
-  group: mc-server
+  group: pufferpanel
   cancel-in-progress: true
   
 jobs:
@@ -120,17 +120,19 @@ jobs:
           # Ensure folders
           mkdir -p pufferpanel/config pufferpanel/data
     
-          # Copy from container instead of host folder
+          # Copy config directly from container (root-owned files)
           docker cp pufferpanel:/etc/pufferpanel/. pufferpanel/config/ || true
-          docker cp pufferpanel:/var/lib/pufferpanel/. pufferpanel/data/ || true
-
+    
+          # Copy data from the host mount (runner’s home dir)
+          cp -r ~/pufferpanel/pufferpanel/data/* pufferpanel/data/ || true
+    
           # Git setup
           git config --global user.name "github-actions[bot]"
           git config --global user.email "github-actions[bot]@users.noreply.github.com"
     
           # Handle upstream commits first
           git pull --rebase origin main || true
-
+    
           git add pufferpanel || true
           git commit -m "Update pufferpanel data" || echo "Nothing to commit"
           git push origin HEAD:main || echo "Nothing to push"
