@@ -111,28 +111,31 @@ jobs:
           npm install -g localtunnel
           timeout 18000s lt --port 8080 --subdomain ks-hosting
           
-      # 12. Save PufferPanel Data
+      # 12. Save & Commit PufferPanel Data
       - name: Save & Commit PufferPanel Data
         if: ${{ always() }}
         run: |
           cd $GITHUB_WORKSPACE
-    
+
           # Ensure folders
           mkdir -p pufferpanel/config pufferpanel/data
-    
-          # Copy config directly from container (root-owned files)
+
+          # Copy config directly from container
           docker cp pufferpanel:/etc/pufferpanel/. pufferpanel/config/ || true
-    
-          # Copy data from the host mount (runner’s home dir)
-          cp -r ~/pufferpanel/pufferpanel/data/* pufferpanel/data/ || true
-    
+
+          # Copy data safely, skip unreadable temp files
+          rsync -a --exclude='*.tmp' --exclude='*/tmp-client/*' ~/pufferpanel/pufferpanel/data/ pufferpanel/data/ || true
+
           # Git setup
           git config --global user.name "github-actions[bot]"
           git config --global user.email "github-actions[bot]@users.noreply.github.com"
-    
-          # Handle upstream commits first
+
+          # Always stash changes before pulling
+          git add -A || true
+          git stash || true
           git pull --rebase origin main || true
-    
+          git stash pop || true
+
           git add pufferpanel || true
           git commit -m "Update pufferpanel data" || echo "Nothing to commit"
           git push origin HEAD:main || echo "Nothing to push"
