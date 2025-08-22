@@ -63,8 +63,8 @@ jobs:
       # 7. Create Docker Compose file
       - name: Create Docker Compose for PufferPanel
         run: |
-          mkdir -p ~/pufferpanel
-          cd ~/pufferpanel
+          mkdir -p $GITHUB_WORKSPACE/pufferpanel/config $GITHUB_WORKSPACE/pufferpanel/data
+          cd $GITHUB_WORKSPACE
           cat <<EOF > docker-compose.yml
           version: '3.8'
           services:
@@ -85,7 +85,7 @@ jobs:
       # 8. Start PufferPanel
       - name: Start PufferPanel Container
         run: |
-          cd ~/pufferpanel
+          cd $GITHUB_WORKSPACE
           docker-compose up -d
           docker ps
 
@@ -101,8 +101,6 @@ jobs:
       # 10. Show Public IPs
       - name: Show Server IP
         run: |
-          curl ifconfig.me
-          hostname -I
           curl -s http://checkip.amazonaws.com
 
       # 11. Run LocalTunnel (300m)
@@ -117,24 +115,9 @@ jobs:
         run: |
           cd $GITHUB_WORKSPACE
 
-          # Ensure folders
-          mkdir -p pufferpanel/config pufferpanel/data
-
-          # Copy config directly from container
-          docker cp pufferpanel:/etc/pufferpanel/. pufferpanel/config/ || true
-
-          # Copy data safely, skip unreadable temp files
-          rsync -a --exclude='*.tmp' --exclude='*/tmp-client/*' ~/pufferpanel/pufferpanel/data/ pufferpanel/data/ || true
-
           # Git setup
           git config --global user.name "github-actions[bot]"
           git config --global user.email "github-actions[bot]@users.noreply.github.com"
-
-          # Always stash changes before pulling
-          git add -A || true
-          git stash || true
-          git pull --rebase origin main || true
-          git stash pop || true
 
           git add pufferpanel || true
           git commit -m "Update pufferpanel data" || echo "Nothing to commit"
